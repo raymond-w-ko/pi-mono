@@ -662,11 +662,11 @@ import type { Model } from "./types.js";
 export const MODELS = {
 `;
 
-	// Generate provider sections
-	for (const [providerId, models] of Object.entries(providers)) {
+	// Generate provider sections (sorted for deterministic output)
+	for (const [providerId, models] of Object.entries(providers).sort(([a], [b]) => a.localeCompare(b))) {
 		output += `\t${JSON.stringify(providerId)}: {\n`;
 
-		for (const model of Object.values(models)) {
+		for (const model of Object.values(models).sort((a, b) => a.id.localeCompare(b.id))) {
 			output += `\t\t"${model.id}": {\n`;
 			output += `\t\t\tid: "${model.id}",\n`;
 			output += `\t\t\tname: "${model.name}",\n`;
