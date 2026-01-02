@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.31.1] - 2026-01-02
+
+### Fixed
+
+- `visibleWidth()` now strips OSC 8 hyperlink sequences, fixing text wrapping for clickable links ([#396](https://github.com/badlogic/pi-mono/pull/396) by [@Cursivez](https://github.com/Cursivez))
+
 ## [0.31.0] - 2026-01-02
 
 ### Added
