@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-01-02
+
 ### Breaking Changes
 
 - `AgentTool` import moved from `@mariozechner/pi-ai` to `@mariozechner/pi-agent-core`
