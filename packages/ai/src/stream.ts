@@ -39,13 +39,9 @@ export function getEnvApiKey(provider: any): string | undefined {
 		return process.env.ANTHROPIC_OAUTH_TOKEN || process.env.ANTHROPIC_API_KEY;
 	}
 
-	// Vertex AI doesn't use API keys.
-	// It relies on Google Cloud auth: `gcloud auth application-default login`.
-	// @google/genai library picks up and manages the auth automatically.
-	// Return a dummy value to maintain consistency.
-	if (provider === "google-vertex") {
-		return "vertex-ai-authenticated";
-	}
+	// Vertex AI uses Application Default Credentials, not API keys.
+	// Auth is configured via `gcloud auth application-default login`.
+	// Don't return a dummy value - require explicit auth.json configuration.
 
 	const envMap: Record<string, string> = {
 		openai: "OPENAI_API_KEY",
@@ -67,6 +63,11 @@ export function stream<TApi extends Api>(
 	context: Context,
 	options?: OptionsForApi<TApi>,
 ): AssistantMessageEventStream {
+	// Vertex AI uses Application Default Credentials, not API keys
+	if (model.api === "google-vertex") {
+		return streamGoogleVertex(model as Model<"google-vertex">, context, options as GoogleVertexOptions);
+	}
+
 	const apiKey = options?.apiKey || getEnvApiKey(model.provider);
 	if (!apiKey) {
 		throw new Error(`No API key for provider: ${model.provider}`);
@@ -94,9 +95,6 @@ export function stream<TApi extends Api>(
 				providerOptions as GoogleGeminiCliOptions,
 			);
 
-		case "google-vertex":
-			return streamGoogleVertex(model as Model<"google-vertex">, context, providerOptions as GoogleVertexOptions);
-
 		default: {
 			// This should never be reached if all Api cases are handled
 			const _exhaustive: never = api;
@@ -119,6 +117,12 @@ export function streamSimple<TApi extends Api>(
 	context: Context,
 	options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
+	// Vertex AI uses Application Default Credentials, not API keys
+	if (model.api === "google-vertex") {
+		const providerOptions = mapOptionsForApi(model, options, undefined);
+		return stream(model, context, providerOptions);
+	}
+
 	const apiKey = options?.apiKey || getEnvApiKey(model.provider);
 	if (!apiKey) {
 		throw new Error(`No API key for provider: ${model.provider}`);
@@ -159,6 +163,8 @@ function mapOptionsForApi<TApi extends Api>(
 				return { ...base, thinkingEnabled: false } satisfies AnthropicOptions;
 			}
 
+			// Claude requires max_tokens > thinking.budget_tokens
+			// So we need to ensure maxTokens accounts for both thinking and output
 			const anthropicBudgets = {
 				minimal: 1024,
 				low: 2048,
@@ -166,10 +172,21 @@ function mapOptionsForApi<TApi extends Api>(
 				high: 16384,
 			};
 
+			const minOutputTokens = 1024;
+			let thinkingBudget = anthropicBudgets[clampReasoning(options.reasoning)!];
+			// Caller's maxTokens is the desired output; add thinking budget on top, capped at model limit
+			const maxTokens = Math.min((base.maxTokens || 0) + thinkingBudget, model.maxTokens);
+
+			// If not enough room for thinking + output, reduce thinking budget
+			if (maxTokens <= thinkingBudget) {
+				thinkingBudget = Math.max(0, maxTokens - minOutputTokens);
+			}
+
 			return {
 				...base,
+				maxTokens,
 				thinkingEnabled: true,
-				thinkingBudgetTokens: anthropicBudgets[clampReasoning(options.reasoning)!],
+				thinkingBudgetTokens: thinkingBudget,
 			} satisfies AnthropicOptions;
 		}
 
@@ -234,7 +251,9 @@ function mapOptionsForApi<TApi extends Api>(
 				} satisfies GoogleGeminiCliOptions;
 			}
 
-			// Gemini 2.x models use thinkingBudget
+			// Models using thinkingBudget (Gemini 2.x, Claude via Antigravity)
+			// Claude requires max_tokens > thinking.budget_tokens
+			// So we need to ensure maxTokens accounts for both thinking and output
 			const budgets: Record<ClampedReasoningEffort, number> = {
 				minimal: 1024,
 				low: 2048,
@@ -242,11 +261,22 @@ function mapOptionsForApi<TApi extends Api>(
 				high: 16384,
 			};
 
+			const minOutputTokens = 1024;
+			let thinkingBudget = budgets[effort];
+			// Caller's maxTokens is the desired output; add thinking budget on top, capped at model limit
+			const maxTokens = Math.min((base.maxTokens || 0) + thinkingBudget, model.maxTokens);
+
+			// If not enough room for thinking + output, reduce thinking budget
+			if (maxTokens <= thinkingBudget) {
+				thinkingBudget = Math.max(0, maxTokens - minOutputTokens);
+			}
+
 			return {
 				...base,
+				maxTokens,
 				thinking: {
 					enabled: true,
-					budgetTokens: budgets[effort],
+					budgetTokens: thinkingBudget,
 				},
 			} satisfies GoogleGeminiCliOptions;
 		}

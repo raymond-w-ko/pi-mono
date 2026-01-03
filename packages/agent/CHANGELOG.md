@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.32.3] - 2026-01-03
+
+## [0.32.2] - 2026-01-03
+
+## [0.32.1] - 2026-01-03
+
+## [0.32.0] - 2026-01-03
+
 ### Breaking Changes
 
 - **Queue API replaced with steer/followUp**: The `queueMessage()` method has been split into two methods with different delivery semantics ([#403](https://github.com/badlogic/pi-mono/issues/403)):

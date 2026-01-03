@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [0.32.3] - 2026-01-03
+
+## [0.32.2] - 2026-01-03
+
+### Fixed
+
+- Slash command autocomplete now triggers for commands starting with `.`, `-`, or `_` (e.g., `/.land`, `/-foo`) ([#422](https://github.com/badlogic/pi-mono/issues/422))
+
+## [0.32.1] - 2026-01-03
+
+## [0.32.0] - 2026-01-03
+
 ### Changed
 
 - Editor component now uses word wrapping instead of character-level wrapping for better readability ([#382](https://github.com/badlogic/pi-mono/pull/382) by [@nickseelert](https://github.com/nickseelert))

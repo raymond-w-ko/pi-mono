@@ -892,9 +892,10 @@ export class InteractiveMode {
 				return;
 			}
 
-			// Handle bash command
+			// Handle bash command (! for normal, !! for excluded from context)
 			if (text.startsWith("!")) {
-				const command = text.slice(1).trim();
+				const isExcluded = text.startsWith("!!");
+				const command = isExcluded ? text.slice(2).trim() : text.slice(1).trim();
 				if (command) {
 					if (this.session.isBashRunning) {
 						this.showWarning("A bash command is already running. Press Esc to cancel it first.");
@@ -902,7 +903,7 @@ export class InteractiveMode {
 						return;
 					}
 					this.editor.addToHistory(text);
-					await this.handleBashCommand(command);
+					await this.handleBashCommand(command, isExcluded);
 					this.isBashMode = false;
 					this.updateEditorBorderColor();
 					return;
@@ -914,26 +915,13 @@ export class InteractiveMode {
 				return;
 			}
 
-			// Hook commands always run immediately, even during streaming
-			// (if they need to interact with LLM, they use pi.sendMessage which handles queueing)
-			if (text.startsWith("/") && this.session.hookRunner) {
-				const spaceIndex = text.indexOf(" ");
-				const commandName = spaceIndex === -1 ? text.slice(1) : text.slice(1, spaceIndex);
-				const command = this.session.hookRunner.getCommand(commandName);
-				if (command) {
-					this.editor.addToHistory(text);
-					this.editor.setText("");
-					await this.session.prompt(text);
-					return;
-				}
-			}
-
-			// Queue steering message if agent is streaming (interrupts current work)
+			// If streaming, use prompt() with steer behavior
+			// This handles hook commands (execute immediately), slash command expansion, and queueing
 			if (this.session.isStreaming) {
-				await this.session.steer(text);
-				this.updatePendingMessagesDisplay();
 				this.editor.addToHistory(text);
 				this.editor.setText("");
+				await this.session.prompt(text, { streamingBehavior: "steer" });
+				this.updatePendingMessagesDisplay();
 				this.ui.requestRender();
 				return;
 			}
@@ -1250,7 +1238,7 @@ export class InteractiveMode {
 	private addMessageToChat(message: AgentMessage, options?: { populateHistory?: boolean }): void {
 		switch (message.role) {
 			case "bashExecution": {
-				const component = new BashExecutionComponent(message.command, this.ui);
+				const component = new BashExecutionComponent(message.command, this.ui, message.excludeFromContext);
 				if (message.output) {
 					component.appendOutput(message.output);
 				}
@@ -1460,11 +1448,12 @@ export class InteractiveMode {
 		if (!text) return;
 
 		// Alt+Enter queues a follow-up message (waits until agent finishes)
+		// This handles hook commands (execute immediately), slash command expansion, and queueing
 		if (this.session.isStreaming) {
-			await this.session.followUp(text);
-			this.updatePendingMessagesDisplay();
 			this.editor.addToHistory(text);
 			this.editor.setText("");
+			await this.session.prompt(text, { streamingBehavior: "followUp" });
+			this.updatePendingMessagesDisplay();
 			this.ui.requestRender();
 		}
 		// If not streaming, Alt+Enter acts like regular Enter (trigger onSubmit)
@@ -1993,15 +1982,26 @@ export class InteractiveMode {
 							await this.session.modelRegistry.authStorage.login(providerId as OAuthProvider, {
 								onAuth: (info: { url: string; instructions?: string }) => {
 									this.chatContainer.addChild(new Spacer(1));
-									// Use OSC 8 hyperlink escape sequence for clickable link
+
+									// OSC 8 hyperlink for desktop terminals that support clicking
 									const hyperlink = `\x1b]8;;${info.url}\x07Click here to login\x1b]8;;\x07`;
 									this.chatContainer.addChild(new Text(theme.fg("accent", hyperlink), 1, 0));
+
+									// OSC 52 to copy URL to clipboard (works over SSH, e.g., Termux)
+									const urlBase64 = Buffer.from(info.url).toString("base64");
+									process.stdout.write(`\x1b]52;c;${urlBase64}\x07`);
+									this.chatContainer.addChild(
+										new Text(theme.fg("dim", "(URL copied to clipboard - paste in browser)"), 1, 0),
+									);
+
 									if (info.instructions) {
 										this.chatContainer.addChild(new Spacer(1));
 										this.chatContainer.addChild(new Text(theme.fg("warning", info.instructions), 1, 0));
 									}
+
 									this.ui.requestRender();
 
+									// Try to open browser on desktop
 									const openCmd =
 										process.platform === "darwin"
 											? "open"
@@ -2362,9 +2362,9 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
-	private async handleBashCommand(command: string): Promise<void> {
+	private async handleBashCommand(command: string, excludeFromContext = false): Promise<void> {
 		const isDeferred = this.session.isStreaming;
-		this.bashComponent = new BashExecutionComponent(command, this.ui);
+		this.bashComponent = new BashExecutionComponent(command, this.ui, excludeFromContext);
 
 		if (isDeferred) {
 			// Show in pending area when agent is streaming
@@ -2377,12 +2377,16 @@ export class InteractiveMode {
 		this.ui.requestRender();
 
 		try {
-			const result = await this.session.executeBash(command, (chunk) => {
-				if (this.bashComponent) {
-					this.bashComponent.appendOutput(chunk);
-					this.ui.requestRender();
-				}
-			});
+			const result = await this.session.executeBash(
+				command,
+				(chunk) => {
+					if (this.bashComponent) {
+						this.bashComponent.appendOutput(chunk);
+						this.ui.requestRender();
+					}
+				},
+				{ excludeFromContext },
+			);
 
 			if (this.bashComponent) {
 				this.bashComponent.setComplete(

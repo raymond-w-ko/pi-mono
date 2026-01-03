@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [0.32.3] - 2026-01-03
+
+### Fixed
+
+- Google Vertex AI models no longer appear in available models list without explicit authentication. Previously, `getEnvApiKey()` returned a dummy value for `google-vertex`, causing models to show up even when Google Cloud ADC was not configured.
+
+## [0.32.2] - 2026-01-03
+
+## [0.32.1] - 2026-01-03
+
+## [0.32.0] - 2026-01-03
+
 ### Added
 
 - Vertex AI provider with ADC (Application Default Credentials) support. Authenticate with `gcloud auth application-default login`, set `GOOGLE_CLOUD_PROJECT` and `GOOGLE_CLOUD_LOCATION`, and access Gemini models via Vertex AI. ([#300](https://github.com/badlogic/pi-mono/pull/300) by [@default-anton](https://github.com/default-anton))
