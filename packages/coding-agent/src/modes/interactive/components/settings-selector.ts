@@ -24,24 +24,30 @@ const THINKING_DESCRIPTIONS: Record<ThinkingLevel, string> = {
 export interface SettingsConfig {
 	autoCompact: boolean;
 	showImages: boolean;
-	queueMode: "all" | "one-at-a-time";
+	autoResizeImages: boolean;
+	steeringMode: "all" | "one-at-a-time";
+	followUpMode: "all" | "one-at-a-time";
 	thinkingLevel: ThinkingLevel;
 	availableThinkingLevels: ThinkingLevel[];
 	currentTheme: string;
 	availableThemes: string[];
 	hideThinkingBlock: boolean;
 	collapseChangelog: boolean;
+	doubleEscapeAction: "branch" | "tree";
 }
 
 export interface SettingsCallbacks {
 	onAutoCompactChange: (enabled: boolean) => void;
 	onShowImagesChange: (enabled: boolean) => void;
-	onQueueModeChange: (mode: "all" | "one-at-a-time") => void;
+	onAutoResizeImagesChange: (enabled: boolean) => void;
+	onSteeringModeChange: (mode: "all" | "one-at-a-time") => void;
+	onFollowUpModeChange: (mode: "all" | "one-at-a-time") => void;
 	onThinkingLevelChange: (level: ThinkingLevel) => void;
 	onThemeChange: (theme: string) => void;
 	onThemePreview?: (theme: string) => void;
 	onHideThinkingBlockChange: (hidden: boolean) => void;
 	onCollapseChangelogChange: (collapsed: boolean) => void;
+	onDoubleEscapeActionChange: (action: "branch" | "tree") => void;
 	onCancel: () => void;
 }
 
@@ -127,10 +133,19 @@ export class SettingsSelectorComponent extends Container {
 				values: ["true", "false"],
 			},
 			{
-				id: "queue-mode",
-				label: "Queue mode",
-				description: "How to process queued messages while agent is working",
-				currentValue: config.queueMode,
+				id: "steering-mode",
+				label: "Steering mode",
+				description:
+					"Enter while streaming queues steering messages. 'one-at-a-time': deliver one, wait for response. 'all': deliver all at once.",
+				currentValue: config.steeringMode,
+				values: ["one-at-a-time", "all"],
+			},
+			{
+				id: "follow-up-mode",
+				label: "Follow-up mode",
+				description:
+					"Alt+Enter queues follow-up messages until agent stops. 'one-at-a-time': deliver one, wait for response. 'all': deliver all at once.",
+				currentValue: config.followUpMode,
 				values: ["one-at-a-time", "all"],
 			},
 			{
@@ -146,6 +161,13 @@ export class SettingsSelectorComponent extends Container {
 				description: "Show condensed changelog after updates",
 				currentValue: config.collapseChangelog ? "true" : "false",
 				values: ["true", "false"],
+			},
+			{
+				id: "double-escape-action",
+				label: "Double-escape action",
+				description: "Action when pressing Escape twice with empty editor",
+				currentValue: config.doubleEscapeAction,
+				values: ["tree", "branch"],
 			},
 			{
 				id: "thinking",
@@ -212,6 +234,15 @@ export class SettingsSelectorComponent extends Container {
 			});
 		}
 
+		// Image auto-resize toggle (always available, affects both attached and read images)
+		items.splice(supportsImages ? 2 : 1, 0, {
+			id: "auto-resize-images",
+			label: "Auto-resize images",
+			description: "Resize large images to 2000x2000 max for better model compatibility",
+			currentValue: config.autoResizeImages ? "true" : "false",
+			values: ["true", "false"],
+		});
+
 		// Add borders
 		this.addChild(new DynamicBorder());
 
@@ -227,14 +258,23 @@ export class SettingsSelectorComponent extends Container {
 					case "show-images":
 						callbacks.onShowImagesChange(newValue === "true");
 						break;
-					case "queue-mode":
-						callbacks.onQueueModeChange(newValue as "all" | "one-at-a-time");
+					case "auto-resize-images":
+						callbacks.onAutoResizeImagesChange(newValue === "true");
+						break;
+					case "steering-mode":
+						callbacks.onSteeringModeChange(newValue as "all" | "one-at-a-time");
+						break;
+					case "follow-up-mode":
+						callbacks.onFollowUpModeChange(newValue as "all" | "one-at-a-time");
 						break;
 					case "hide-thinking":
 						callbacks.onHideThinkingBlockChange(newValue === "true");
 						break;
 					case "collapse-changelog":
 						callbacks.onCollapseChangelogChange(newValue === "true");
+						break;
+					case "double-escape-action":
+						callbacks.onDoubleEscapeActionChange(newValue as "branch" | "tree");
 						break;
 				}
 			},

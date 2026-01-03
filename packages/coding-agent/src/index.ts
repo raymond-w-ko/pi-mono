@@ -120,6 +120,7 @@ export {
 } from "./core/session-manager.js";
 export {
 	type CompactionSettings,
+	type ImageSettings,
 	type RetrySettings,
 	type Settings,
 	SettingsManager,
@@ -149,7 +150,9 @@ export {
 	type LsToolDetails,
 	lsTool,
 	type ReadToolDetails,
+	type ReadToolOptions,
 	readTool,
+	type ToolsOptions,
 	type TruncationResult,
 	writeTool,
 } from "./core/tools/index.js";
@@ -157,5 +160,5 @@ export {
 export { main } from "./main.js";
 // UI components for hooks
 export { BorderedLoader } from "./modes/interactive/components/bordered-loader.js";
-// Theme utilities for custom tools
-export { getMarkdownTheme } from "./modes/interactive/theme/theme.js";
+// Theme utilities for custom tools and hooks
+export { getMarkdownTheme, Theme, type ThemeColor } from "./modes/interactive/theme/theme.js";
