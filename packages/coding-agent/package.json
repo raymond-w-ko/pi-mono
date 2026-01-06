@@ -1,6 +1,6 @@
 {
 	"name": "@mariozechner/pi-coding-agent",
-	"version": "0.32.3",
+	"version": "0.37.2",
 	"description": "Coding agent CLI with read, bash, edit, write tools and session management",
 	"type": "module",
 	"piConfig": {
@@ -29,18 +29,19 @@
 		"CHANGELOG.md"
 	],
 	"scripts": {
-		"clean": "rm -rf dist",
-		"build": "tsgo -p tsconfig.build.json && chmod +x dist/cli.js && npm run copy-assets",
+		"clean": "shx rm -rf dist",
+		"build": "tsgo -p tsconfig.build.json && shx chmod +x dist/cli.js && npm run copy-assets",
 		"build:binary": "npm run build && bun build --compile ./dist/cli.js --outfile dist/pi && npm run copy-binary-assets",
-		"copy-assets": "mkdir -p dist/modes/interactive/theme && cp src/modes/interactive/theme/*.json dist/modes/interactive/theme/ && mkdir -p dist/core/export-html/vendor && cp src/core/export-html/template.html src/core/export-html/template.css src/core/export-html/template.js dist/core/export-html/ && cp src/core/export-html/vendor/*.js dist/core/export-html/vendor/",
-		"copy-binary-assets": "cp package.json dist/ && cp README.md dist/ && cp CHANGELOG.md dist/ && mkdir -p dist/theme && cp src/modes/interactive/theme/*.json dist/theme/ && mkdir -p dist/export-html/vendor && cp src/core/export-html/template.html dist/export-html/ && cp src/core/export-html/vendor/*.js dist/export-html/vendor/ && cp -r docs dist/ && cp -r examples dist/",
+		"copy-assets": "shx mkdir -p dist/modes/interactive/theme && shx cp src/modes/interactive/theme/*.json dist/modes/interactive/theme/ && shx mkdir -p dist/core/export-html/vendor && shx cp src/core/export-html/template.html src/core/export-html/template.css src/core/export-html/template.js dist/core/export-html/ && shx cp src/core/export-html/vendor/*.js dist/core/export-html/vendor/",
+		"copy-binary-assets": "shx cp package.json dist/ && shx cp README.md dist/ && shx cp CHANGELOG.md dist/ && shx mkdir -p dist/theme && shx cp src/modes/interactive/theme/*.json dist/theme/ && shx mkdir -p dist/export-html/vendor && shx cp src/core/export-html/template.html dist/export-html/ && shx cp src/core/export-html/vendor/*.js dist/export-html/vendor/ && shx cp -r docs dist/ && shx cp -r examples dist/",
 		"test": "vitest --run",
 		"prepublishOnly": "npm run clean && npm run build"
 	},
 	"dependencies": {
-		"@mariozechner/pi-agent-core": "^0.32.3",
-		"@mariozechner/pi-ai": "^0.32.3",
-		"@mariozechner/pi-tui": "^0.32.3",
+		"@crosscopy/clipboard": "^0.2.8",
+		"@mariozechner/pi-agent-core": "^0.37.2",
+		"@mariozechner/pi-ai": "^0.37.2",
+		"@mariozechner/pi-tui": "^0.37.2",
 		"chalk": "^5.5.0",
 		"cli-highlight": "^2.1.11",
 		"diff": "^8.0.2",
@@ -48,11 +49,15 @@
 		"glob": "^11.0.3",
 		"jiti": "^2.6.1",
 		"marked": "^15.0.12",
+		"proper-lockfile": "^4.1.2",
 		"sharp": "^0.34.2"
 	},
 	"devDependencies": {
 		"@types/diff": "^7.0.2",
+		"@types/ms": "^2.1.0",
 		"@types/node": "^24.3.0",
+		"@types/proper-lockfile": "^4.1.4",
+		"shx": "^0.3.4",
 		"typescript": "^5.7.3",
 		"vitest": "^3.2.4"
 	},

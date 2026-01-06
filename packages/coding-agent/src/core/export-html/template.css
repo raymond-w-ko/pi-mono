@@ -280,10 +280,65 @@
       color: var(--userMessageText);
       padding: var(--line-height);
       border-radius: 4px;
+      position: relative;
     }
 
     .assistant-message {
       padding: 0;
+      position: relative;
+    }
+
+    /* Copy link button - appears on hover */
+    .copy-link-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      padding: 6px;
+      background: var(--container-bg);
+      border: 1px solid var(--dim);
+      border-radius: 4px;
+      color: var(--muted);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s, background 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    .user-message:hover .copy-link-btn,
+    .assistant-message:hover .copy-link-btn {
+      opacity: 1;
+    }
+
+    .copy-link-btn:hover {
+      background: var(--accent);
+      color: var(--body-bg);
+      border-color: var(--accent);
+    }
+
+    .copy-link-btn.copied {
+      background: var(--success, #22c55e);
+      color: white;
+      border-color: var(--success, #22c55e);
+    }
+
+    /* Highlight effect for deep-linked messages */
+    .user-message.highlight,
+    .assistant-message.highlight {
+      animation: highlight-pulse 2s ease-out;
+    }
+
+    @keyframes highlight-pulse {
+      0% {
+        box-shadow: 0 0 0 3px var(--accent);
+      }
+      100% {
+        box-shadow: 0 0 0 0 transparent;
+      }
     }
 
     .assistant-message > .message-timestamp {
@@ -330,6 +385,10 @@
     }
 
     .tool-execution + .tool-execution {
+      margin-top: var(--line-height);
+    }
+
+    .assistant-text + .tool-execution {
       margin-top: var(--line-height);
     }
 
@@ -493,19 +552,45 @@
       margin-bottom: var(--line-height);
     }
 
+    .system-prompt.expandable {
+      cursor: pointer;
+    }
+
     .system-prompt-header {
       font-weight: bold;
       color: var(--customMessageLabel);
     }
 
-    .system-prompt-content {
+    .system-prompt-preview {
       color: var(--customMessageText);
       white-space: pre-wrap;
       word-wrap: break-word;
       font-size: 11px;
-      max-height: 200px;
-      overflow-y: auto;
       margin-top: var(--line-height);
+    }
+
+    .system-prompt-expand-hint {
+      color: var(--muted);
+      font-style: italic;
+      margin-top: 4px;
+    }
+
+    .system-prompt-full {
+      display: none;
+      color: var(--customMessageText);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 11px;
+      margin-top: var(--line-height);
+    }
+
+    .system-prompt.expanded .system-prompt-preview,
+    .system-prompt.expanded .system-prompt-expand-hint {
+      display: none;
+    }
+
+    .system-prompt.expanded .system-prompt-full {
+      display: block;
     }
 
     /* Tools list */
@@ -518,7 +603,7 @@
 
     .tools-header {
       font-weight: bold;
-      color: var(--warning);
+      color: var(--customMessageLabel);
       margin-bottom: var(--line-height);
     }
 

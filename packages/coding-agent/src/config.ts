@@ -147,9 +147,14 @@ export function getToolsDir(): string {
 	return join(getAgentDir(), "tools");
 }
 
-/** Get path to slash commands directory */
-export function getCommandsDir(): string {
-	return join(getAgentDir(), "commands");
+/** Get path to managed binaries directory (fd, rg) */
+export function getBinDir(): string {
+	return join(getAgentDir(), "bin");
+}
+
+/** Get path to prompt templates directory */
+export function getPromptsDir(): string {
+	return join(getAgentDir(), "prompts");
 }
 
 /** Get path to sessions directory */

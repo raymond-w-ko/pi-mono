@@ -2,6 +2,49 @@
 
 ## [Unreleased]
 
+## [0.37.2] - 2026-01-05
+
+## [0.37.1] - 2026-01-05
+
+## [0.37.0] - 2026-01-05
+
+### Fixed
+
+- Crash when pasting text with trailing whitespace exceeding terminal width through Markdown rendering ([#457](https://github.com/badlogic/pi-mono/pull/457) by [@robinwander](https://github.com/robinwander))
+
+## [0.36.0] - 2026-01-05
+
+## [0.35.0] - 2026-01-05
+
+## [0.34.2] - 2026-01-04
+
+## [0.34.1] - 2026-01-04
+
+### Added
+
+- Symbol key support in keybinding system: `SymbolKey` type with 32 symbol keys, `Key` constants (e.g., `Key.backtick`, `Key.comma`), updated `matchesKey()` and `parseKey()` to handle symbol input ([#450](https://github.com/badlogic/pi-mono/pull/450) by [@kaofelix](https://github.com/kaofelix))
+
+## [0.34.0] - 2026-01-04
+
+### Added
+
+- `Editor.getExpandedText()` method that returns text with paste markers expanded to their actual content ([#444](https://github.com/badlogic/pi-mono/pull/444) by [@aliou](https://github.com/aliou))
+
+## [0.33.0] - 2026-01-04
+
+### Breaking Changes
+
+- **Key detection functions removed**: All `isXxx()` key detection functions (`isEnter()`, `isEscape()`, `isCtrlC()`, etc.) have been removed. Use `matchesKey(data, keyId)` instead (e.g., `matchesKey(data, "enter")`, `matchesKey(data, "ctrl+c")`). This affects hooks and custom tools that use `ctx.ui.custom()` with keyboard input handling. ([#405](https://github.com/badlogic/pi-mono/pull/405))
+
+### Added
+
+- `Editor.insertTextAtCursor(text)` method for programmatic text insertion ([#419](https://github.com/badlogic/pi-mono/issues/419))
+- `EditorKeybindingsManager` for configurable editor keybindings. Components now use `matchesKey()` and keybindings manager instead of individual `isXxx()` functions. ([#405](https://github.com/badlogic/pi-mono/pull/405) by [@hjanuschka](https://github.com/hjanuschka))
+
+### Changed
+
+- Key detection refactored: consolidated `is*()` functions into generic `matchesKey(data, keyId)` function that accepts key identifiers like `"ctrl+c"`, `"shift+enter"`, `"alt+left"`, etc.
+
 ## [0.32.3] - 2026-01-03
 
 ## [0.32.2] - 2026-01-03

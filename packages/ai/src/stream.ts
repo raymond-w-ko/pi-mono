@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { supportsXhigh } from "./models.js";
 import { type AnthropicOptions, streamAnthropic } from "./providers/anthropic.js";
 import { type GoogleOptions, streamGoogle } from "./providers/google.js";
@@ -7,6 +10,7 @@ import {
 	streamGoogleGeminiCli,
 } from "./providers/google-gemini-cli.js";
 import { type GoogleVertexOptions, streamGoogleVertex } from "./providers/google-vertex.js";
+import { type OpenAICodexResponsesOptions, streamOpenAICodexResponses } from "./providers/openai-codex-responses.js";
 import { type OpenAICompletionsOptions, streamOpenAICompletions } from "./providers/openai-completions.js";
 import { type OpenAIResponsesOptions, streamOpenAIResponses } from "./providers/openai-responses.js";
 import type {
@@ -17,9 +21,20 @@ import type {
 	KnownProvider,
 	Model,
 	OptionsForApi,
-	ReasoningEffort,
 	SimpleStreamOptions,
+	ThinkingLevel,
 } from "./types.js";
+
+const VERTEX_ADC_CREDENTIALS_PATH = join(homedir(), ".config", "gcloud", "application_default_credentials.json");
+
+let cachedVertexAdcCredentialsExists: boolean | null = null;
+
+function hasVertexAdcCredentials(): boolean {
+	if (cachedVertexAdcCredentialsExists === null) {
+		cachedVertexAdcCredentialsExists = existsSync(VERTEX_ADC_CREDENTIALS_PATH);
+	}
+	return cachedVertexAdcCredentialsExists;
+}
 
 /**
  * Get API key for provider from known environment variables, e.g. OPENAI_API_KEY.
@@ -41,7 +56,15 @@ export function getEnvApiKey(provider: any): string | undefined {
 
 	// Vertex AI uses Application Default Credentials, not API keys.
 	// Auth is configured via `gcloud auth application-default login`.
-	// Don't return a dummy value - require explicit auth.json configuration.
+	if (provider === "google-vertex") {
+		const hasCredentials = hasVertexAdcCredentials();
+		const hasProject = !!(process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT);
+		const hasLocation = !!process.env.GOOGLE_CLOUD_LOCATION;
+
+		if (hasCredentials && hasProject && hasLocation) {
+			return "<authenticated>";
+		}
+	}
 
 	const envMap: Record<string, string> = {
 		openai: "OPENAI_API_KEY",
@@ -84,6 +107,9 @@ export function stream<TApi extends Api>(
 
 		case "openai-responses":
 			return streamOpenAIResponses(model as Model<"openai-responses">, context, providerOptions as any);
+
+		case "openai-codex-responses":
+			return streamOpenAICodexResponses(model as Model<"openai-codex-responses">, context, providerOptions as any);
 
 		case "google-generative-ai":
 			return streamGoogle(model as Model<"google-generative-ai">, context, providerOptions);
@@ -154,7 +180,7 @@ function mapOptionsForApi<TApi extends Api>(
 	};
 
 	// Helper to clamp xhigh to high for providers that don't support it
-	const clampReasoning = (effort: ReasoningEffort | undefined) => (effort === "xhigh" ? "high" : effort);
+	const clampReasoning = (effort: ThinkingLevel | undefined) => (effort === "xhigh" ? "high" : effort);
 
 	switch (model.api) {
 		case "anthropic-messages": {
@@ -201,6 +227,12 @@ function mapOptionsForApi<TApi extends Api>(
 				...base,
 				reasoningEffort: supportsXhigh(model) ? options?.reasoning : clampReasoning(options?.reasoning),
 			} satisfies OpenAIResponsesOptions;
+
+		case "openai-codex-responses":
+			return {
+				...base,
+				reasoningEffort: supportsXhigh(model) ? options?.reasoning : clampReasoning(options?.reasoning),
+			} satisfies OpenAICodexResponsesOptions;
 
 		case "google-generative-ai": {
 			// Explicitly disable thinking when reasoning is not specified
@@ -254,7 +286,7 @@ function mapOptionsForApi<TApi extends Api>(
 			// Models using thinkingBudget (Gemini 2.x, Claude via Antigravity)
 			// Claude requires max_tokens > thinking.budget_tokens
 			// So we need to ensure maxTokens accounts for both thinking and output
-			const budgets: Record<ClampedReasoningEffort, number> = {
+			const budgets: Record<ClampedThinkingLevel, number> = {
 				minimal: 1024,
 				low: 2048,
 				medium: 8192,
@@ -318,7 +350,7 @@ function mapOptionsForApi<TApi extends Api>(
 	}
 }
 
-type ClampedReasoningEffort = Exclude<ReasoningEffort, "xhigh">;
+type ClampedThinkingLevel = Exclude<ThinkingLevel, "xhigh">;
 
 function isGemini3ProModel(model: Model<"google-generative-ai">): boolean {
 	// Covers gemini-3-pro, gemini-3-pro-preview, and possible other prefixed ids in the future
@@ -331,7 +363,7 @@ function isGemini3FlashModel(model: Model<"google-generative-ai">): boolean {
 }
 
 function getGemini3ThinkingLevel(
-	effort: ClampedReasoningEffort,
+	effort: ClampedThinkingLevel,
 	model: Model<"google-generative-ai">,
 ): GoogleThinkingLevel {
 	if (isGemini3ProModel(model)) {
@@ -358,7 +390,7 @@ function getGemini3ThinkingLevel(
 	}
 }
 
-function getGeminiCliThinkingLevel(effort: ClampedReasoningEffort, modelId: string): GoogleThinkingLevel {
+function getGeminiCliThinkingLevel(effort: ClampedThinkingLevel, modelId: string): GoogleThinkingLevel {
 	if (modelId.includes("3-pro")) {
 		// Gemini 3 Pro only supports LOW/HIGH (for now)
 		switch (effort) {
@@ -383,10 +415,10 @@ function getGeminiCliThinkingLevel(effort: ClampedReasoningEffort, modelId: stri
 	}
 }
 
-function getGoogleBudget(model: Model<"google-generative-ai">, effort: ClampedReasoningEffort): number {
+function getGoogleBudget(model: Model<"google-generative-ai">, effort: ClampedThinkingLevel): number {
 	// See https://ai.google.dev/gemini-api/docs/thinking#set-budget
 	if (model.id.includes("2.5-pro")) {
-		const budgets: Record<ClampedReasoningEffort, number> = {
+		const budgets: Record<ClampedThinkingLevel, number> = {
 			minimal: 128,
 			low: 2048,
 			medium: 8192,
@@ -397,7 +429,7 @@ function getGoogleBudget(model: Model<"google-generative-ai">, effort: ClampedRe
 
 	if (model.id.includes("2.5-flash")) {
 		// Covers 2.5-flash-lite as well
-		const budgets: Record<ClampedReasoningEffort, number> = {
+		const budgets: Record<ClampedThinkingLevel, number> = {
 			minimal: 128,
 			low: 2048,
 			medium: 8192,
